@@ -175,16 +175,20 @@
             <div class="smart-planner-header">
               <span style="font-size: 1.2rem;">🤖</span>
               <strong style="font-size: 0.95rem;">Smart Study Schedule</strong>
-              <span class="badge-n8n">AI Powered</span>
+              <span class="badge-n8n">AI Scheduler</span>
             </div>
             <p class="smart-planner-desc">
               Generate an optimized daily timetable based on your deadlines, priority, and estimated study hours.
             </p>
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+              <label for="dailyStudyHoursInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);">Daily Available Study Hours:</label>
+              <input type="number" id="dailyStudyHoursInput" class="form-control" min="1" max="14" step="0.5" value="3" style="padding: 0.4rem 0.65rem; font-size: 0.85rem;">
+            </div>
             <div class="smart-schedule-preview">
-              💡 <em>Automatically calculates balanced daily focus sessions so you can stay on track without cramming.</em>
+              💡 <em>Connects to your <strong>n8n AI schedule generator</strong> to balance study sessions before your deadlines.</em>
             </div>
             <button type="button" class="btn-smart-plan" id="generatePlanBtn">
-              <span>✨</span> Preview Smart Study Plan
+              <span id="generatePlanIcon">✨</span> <span id="generatePlanText">Generate Smart Study Plan</span>
             </button>
           </div>
 
@@ -298,19 +302,26 @@
           <h3 style="display: flex; align-items: center; gap: 0.5rem;">
             <span>🤖</span> Generated Smart Study Schedule
           </h3>
-          <span class="badge-n8n">Optimized</span>
+          <span class="badge-n8n" id="smartPlanStatusBadge">Optimized</span>
         </div>
-        <p style="margin-top: 0.5rem;">
-          Here is an algorithmic breakdown of your upcoming study sessions, calculated by distributing workload ahead of approaching deadlines.
+        <p style="margin-top: 0.5rem;" id="smartPlanSubtitle">
+          Algorithmic breakdown of your study sessions, calculated by distributing workload ahead of approaching deadlines.
         </p>
       </div>
 
-      <div style="background: #faf8ff; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-secondary);">
+      <!-- Schedule Summary Banner -->
+      <div id="smartPlanSummaryBanner" style="background: #faf8ff; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-secondary);">
         <strong>💡 Schedule Summary:</strong> 
-        <span style="color: var(--primary); font-weight: 600;">Personalized Focus Blocks</span>. 
-        Sessions are arranged chronologically to ensure high-priority deadlines are completed well before their due date.
+        <span style="color: var(--primary); font-weight: 600;" id="smartPlanSummaryText">Ready to generate your study timetable</span>
       </div>
 
+      <!-- Warnings container -->
+      <div id="smartPlanWarnings" style="display: none;"></div>
+
+      <!-- Unscheduled tasks container -->
+      <div id="smartPlanUnscheduled" style="display: none;"></div>
+
+      <!-- Schedule Timeline / Loading / Error Container -->
       <div class="smart-schedule-timeline" id="smartScheduleContent">
         <!-- Rendered dynamically -->
       </div>

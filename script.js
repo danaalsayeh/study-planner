@@ -134,8 +134,17 @@ const elements = {
 
   // Smart Plan Modal
   generatePlanBtn: document.getElementById('generatePlanBtn'),
+  generatePlanIcon: document.getElementById('generatePlanIcon'),
+  generatePlanText: document.getElementById('generatePlanText'),
+  dailyStudyHoursInput: document.getElementById('dailyStudyHoursInput'),
   smartPlanModal: document.getElementById('smartPlanModal'),
   closeSmartPlanModal: document.getElementById('closeSmartPlanModal'),
+  smartPlanStatusBadge: document.getElementById('smartPlanStatusBadge'),
+  smartPlanSubtitle: document.getElementById('smartPlanSubtitle'),
+  smartPlanSummaryBanner: document.getElementById('smartPlanSummaryBanner'),
+  smartPlanSummaryText: document.getElementById('smartPlanSummaryText'),
+  smartPlanWarnings: document.getElementById('smartPlanWarnings'),
+  smartPlanUnscheduled: document.getElementById('smartPlanUnscheduled'),
   smartScheduleContent: document.getElementById('smartScheduleContent'),
   confirmPlanBtn: document.getElementById('confirmPlanBtn'),
   printScheduleBtn: document.getElementById('printScheduleBtn'),
@@ -546,78 +555,421 @@ function escapeHTML(str) {
 }
 
 // ==============================================================================
-// Smart Study Plan Generator (Ready for n8n Webhook Integration)
+// Smart Study Plan Generator (Connected to n8n Webhook)
 // ==============================================================================
-function generateSmartStudyPlan() {
-  const pendingItems = state.assignments.filter(a => !a.completed);
+const N8N_WEBHOOK_URL = 'https://dana962.app.n8n.cloud/webhook/generate-study-plan';
 
-  if (pendingItems.length === 0) {
-    alert("You don't have any pending assignments to schedule! Add some assignments first.");
+/**
+ * Returns today's date in user's local timezone formatted as 'YYYY-MM-DD'
+ */
+function getLocalTodayDate() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Formats a schedule date (YYYY-MM-DD) into a friendly string
+ */
+function formatScheduleDate(dateStr) {
+  if (!dateStr) return 'Scheduled Sessions';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const today = getLocalTodayDate();
+    const isToday = (dateStr === today);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const month = d.toLocaleDateString('en-US', { month: 'short' });
+    const dayNum = d.getDate();
+    return `${isToday ? 'Today (' + dayName + ')' : dayName}, ${month} ${dayNum}`;
+  }
+  return dateStr;
+}
+
+/**
+ * Toggles the loading state of the Generate Plan button & modal
+ */
+function setPlanLoadingState(isLoading) {
+  if (isLoading) {
+    if (elements.generatePlanBtn) {
+      elements.generatePlanBtn.disabled = true;
+      elements.generatePlanIcon.textContent = '⏳';
+      elements.generatePlanText.textContent = 'Generating Schedule...';
+    }
+    elements.smartPlanStatusBadge.textContent = 'Connecting...';
+    elements.smartPlanStatusBadge.style.background = 'var(--primary)';
+    elements.smartPlanSubtitle.textContent = 'Contacting your n8n AI scheduler...';
+    elements.smartPlanSummaryBanner.style.display = 'block';
+    elements.smartPlanSummaryText.textContent = 'Calculating balanced study blocks for upcoming deadlines...';
+    elements.smartPlanWarnings.style.display = 'none';
+    elements.smartPlanUnscheduled.style.display = 'none';
+    elements.smartScheduleContent.innerHTML = `
+      <div style="text-align: center; padding: 2.5rem 1rem;">
+        <div class="loading-spinner"></div>
+        <p style="margin-top: 1rem; color: var(--text-main); font-weight: 600; font-size: 0.95rem;">
+          Connecting to n8n Webhook...
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.8rem; max-width: 380px; margin: 0.35rem auto 0;">
+          Analyzing your real unfinished assignments and balancing study hours across upcoming days.
+        </p>
+      </div>
+    `;
+    elements.smartPlanModal.classList.add('active');
+  } else {
+    if (elements.generatePlanBtn) {
+      elements.generatePlanBtn.disabled = false;
+      elements.generatePlanIcon.textContent = '✨';
+      elements.generatePlanText.textContent = 'Generate Smart Study Plan';
+    }
+  }
+}
+
+/**
+ * Displays friendly modal when user has 0 unfinished assignments
+ */
+function displayEmptyStudyPlanModal() {
+  elements.smartPlanStatusBadge.textContent = 'No Tasks';
+  elements.smartPlanStatusBadge.style.background = 'var(--secondary)';
+  elements.smartPlanSubtitle.textContent = 'Your schedule is built from your active, unfinished assignments.';
+  elements.smartPlanSummaryBanner.style.display = 'none';
+  elements.smartPlanWarnings.style.display = 'none';
+  elements.smartPlanUnscheduled.style.display = 'none';
+  elements.smartScheduleContent.innerHTML = `
+    <div style="text-align: center; padding: 2rem 1rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📋</div>
+      <h4 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 0.5rem;">No Unfinished Assignments Found</h4>
+      <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 420px; margin: 0 auto 1.25rem; line-height: 1.5;">
+        You currently have zero pending assignments. Add your real course tasks using the form on the left to generate an automated timetable.
+      </p>
+      <button type="button" class="btn-primary" style="display: inline-flex; margin: 0 auto;" onclick="document.getElementById('closeSmartPlanModal').click(); document.getElementById('taskTitle').focus();">
+        ✍️ Add Your First Assignment
+      </button>
+    </div>
+  `;
+  elements.smartPlanModal.classList.add('active');
+}
+
+/**
+ * Displays error modal if any assignment has missing data
+ */
+function displayIncompleteAssignmentsError(invalidList) {
+  elements.smartPlanStatusBadge.textContent = 'Validation Alert';
+  elements.smartPlanStatusBadge.style.background = 'var(--priority-high)';
+  elements.smartPlanSummaryBanner.style.display = 'none';
+  elements.smartPlanWarnings.style.display = 'none';
+  elements.smartPlanUnscheduled.style.display = 'none';
+  elements.smartScheduleContent.innerHTML = `
+    <div class="smart-alert smart-alert-warning">
+      <div style="font-weight: 700; margin-bottom: 0.4rem; font-size: 0.95rem;">⚠️ Missing Assignment Details</div>
+      <p>The scheduler requires complete information to calculate realistic study dates. The following assignments are missing a deadline date or valid study hours:</p>
+      <ul style="margin: 0.5rem 0 0.5rem 1.25rem;">
+        ${invalidList.map(item => `<li><strong>${escapeHTML(item)}</strong></li>`).join('')}
+      </ul>
+      <p style="font-size: 0.78rem;">Please update these tasks with real deadline dates and hours before generating your plan.</p>
+    </div>
+  `;
+  elements.smartPlanModal.classList.add('active');
+}
+
+/**
+ * Main action: generates study plan via n8n webhook
+ */
+async function generateSmartStudyPlan() {
+  // 1. Read real, unfinished assignments from localStorage/state
+  const pendingAssignments = state.assignments.filter(a => !a.completed);
+
+  if (pendingAssignments.length === 0) {
+    showToast('No unfinished assignments found. Add tasks to your planner first!', 'info');
+    displayEmptyStudyPlanModal();
     return;
   }
 
-  // Generate an algorithmic distribution over the next 4 days
-  // This simulates the schedule optimization engine that will be powered by the n8n webhook workflow
-  const days = ['Today', 'Tomorrow', 'Day 3', 'Day 4'];
-  const scheduleSlots = [];
+  // 2. Read dailyStudyHours from input (default 3)
+  let dailyStudyHours = 3;
+  if (elements.dailyStudyHoursInput) {
+    const val = parseFloat(elements.dailyStudyHoursInput.value);
+    if (!isNaN(val) && val > 0) {
+      dailyStudyHours = val;
+    }
+  }
 
-  // Group pending tasks by priority and deadline
-  const sorted = [...pendingItems].sort((a, b) => a.deadline.localeCompare(b.deadline));
+  // 3. Transform assignment fields into the format expected by n8n:
+  // { today: 'YYYY-MM-DD', dailyStudyHours: 3, assignments: [{task, course, deadline, estimatedHours}] }
+  const invalidAssignments = [];
+  const transformedAssignments = [];
 
-  let dayIndex = 0;
-  sorted.forEach((task, idx) => {
-    const dayName = days[dayIndex % days.length];
-    const sessionHours = Math.min(task.estimatedHours, 2.5);
+  for (const item of pendingAssignments) {
+    const taskName = (item.title || '').trim();
+    const courseName = (item.course || '').trim();
+    const deadline = (item.deadline || '').trim();
+    const estimatedHours = parseFloat(item.estimatedHours);
 
-    scheduleSlots.push({
-      day: dayName,
-      time: dayIndex % 2 === 0 ? '04:00 PM - 06:00 PM' : '07:30 PM - 09:30 PM',
-      course: task.course,
-      taskTitle: task.title,
-      hours: sessionHours,
-      deadline: task.deadline
+    if (!taskName || !deadline || isNaN(estimatedHours) || estimatedHours <= 0) {
+      invalidAssignments.push(taskName || 'Untitled assignment');
+    } else {
+      transformedAssignments.push({
+        task: taskName,
+        course: courseName || 'General',
+        deadline: deadline,
+        estimatedHours: estimatedHours
+      });
+    }
+  }
+
+  if (invalidAssignments.length > 0) {
+    displayIncompleteAssignmentsError(invalidAssignments);
+    return;
+  }
+
+  const payload = {
+    today: getLocalTodayDate(),
+    dailyStudyHours: dailyStudyHours,
+    assignments: transformedAssignments
+  };
+
+  // 4. Show loading state
+  setPlanLoadingState(true);
+
+  try {
+    // Direct fetch to published n8n webhook
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
     });
 
-    dayIndex++;
+    if (!response.ok) {
+      let errDetails = '';
+      try {
+        const errJson = await response.json();
+        errDetails = errJson.message || JSON.stringify(errJson);
+      } catch (e) {
+        errDetails = await response.text();
+      }
+      throw new Error(`n8n HTTP ${response.status}: ${errDetails || response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || typeof data !== 'object') {
+      throw new Error('Received an invalid or empty response from n8n scheduler.');
+    }
+
+    renderScheduleResult(data, dailyStudyHours);
+  } catch (error) {
+    handleScheduleFetchError(error, payload, dailyStudyHours);
+  } finally {
+    setPlanLoadingState(false);
+  }
+}
+
+/**
+ * Renders the returned schedule, warnings, and unscheduled hours
+ */
+function renderScheduleResult(data, dailyStudyHours) {
+  elements.smartPlanStatusBadge.textContent = 'Generated';
+  elements.smartPlanStatusBadge.style.background = 'var(--success)';
+  elements.smartPlanSubtitle.textContent = 'Here is your balanced study schedule generated by n8n.';
+
+  // Summary message banner
+  elements.smartPlanSummaryBanner.style.display = 'block';
+  elements.smartPlanSummaryText.textContent = data.message || 'Your study plan has been generated!';
+
+  // Render Warnings
+  if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+    elements.smartPlanWarnings.style.display = 'block';
+    elements.smartPlanWarnings.innerHTML = `
+      <div class="smart-alert smart-alert-warning">
+        <strong>⚠️ Schedule Warning${data.warnings.length > 1 ? 's' : ''}:</strong>
+        <ul>
+          ${data.warnings.map(w => `<li>${escapeHTML(typeof w === 'string' ? w : JSON.stringify(w))}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  } else {
+    elements.smartPlanWarnings.style.display = 'none';
+    elements.smartPlanWarnings.innerHTML = '';
+  }
+
+  // Render Unscheduled Tasks
+  if (Array.isArray(data.unscheduled) && data.unscheduled.length > 0) {
+    elements.smartPlanUnscheduled.style.display = 'block';
+    elements.smartPlanUnscheduled.innerHTML = `
+      <div class="smart-alert smart-alert-unscheduled">
+        <strong>⏳ Unscheduled Study Hours (${data.unscheduled.length} item${data.unscheduled.length > 1 ? 's' : ''}):</strong>
+        <p style="margin-top: 0.25rem;">The following tasks could not be fully fitted before their deadlines within ${dailyStudyHours}h/day:</p>
+        <ul>
+          ${data.unscheduled.map(u => {
+            const taskName = u.task || u.title || 'Task';
+            const remaining = u.remainingHours !== undefined ? u.remainingHours : (u.hours || '?');
+            return `<li><strong>${escapeHTML(taskName)}</strong>: ${remaining} hour(s) left unscheduled</li>`;
+          }).join('')}
+        </ul>
+      </div>
+    `;
+  } else {
+    elements.smartPlanUnscheduled.style.display = 'none';
+    elements.smartPlanUnscheduled.innerHTML = '';
+  }
+
+  // Render Schedule grouped by date
+  const schedule = Array.isArray(data.schedule) ? data.schedule : [];
+
+  if (schedule.length === 0) {
+    elements.smartScheduleContent.innerHTML = `
+      <div class="smart-alert smart-alert-info">
+        <strong>ℹ️ Notice:</strong> No study sessions were scheduled. Check your deadlines or increase your daily available study hours.
+      </div>
+    `;
+    elements.smartPlanModal.classList.add('active');
+    return;
+  }
+
+  // Group by date
+  const groupedByDate = {};
+  schedule.forEach(slot => {
+    const dateKey = slot.date || 'Upcoming';
+    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+    groupedByDate[dateKey].push(slot);
   });
 
-  // Group by day for clean display in modal
-  const groupedByDay = {};
-  scheduleSlots.forEach(slot => {
-    if (!groupedByDay[slot.day]) groupedByDay[slot.day] = [];
-    groupedByDay[slot.day].push(slot);
-  });
+  // Sort dates chronologically
+  const sortedDates = Object.keys(groupedByDate).sort();
 
   let html = '';
-  for (const [day, slots] of Object.entries(groupedByDay)) {
+  sortedDates.forEach(dateKey => {
+    const slots = groupedByDate[dateKey];
+    const dayTotalHours = slots.reduce((sum, s) => sum + (parseFloat(s.hours) || 0), 0);
+    const dayTitle = formatScheduleDate(dateKey);
+
     html += `
       <div class="schedule-day-block">
         <div class="schedule-day-title">
-          <span>📅 ${day} Study Sessions</span>
-          <span>${slots.length} ${slots.length === 1 ? 'session' : 'sessions'}</span>
+          <span>📅 ${escapeHTML(dayTitle)}</span>
+          <span style="font-size: 0.78rem; opacity: 0.85;">${dayTotalHours} total hours &bull; ${slots.length} ${slots.length === 1 ? 'session' : 'sessions'}</span>
         </div>
     `;
 
     slots.forEach(slot => {
       html += `
         <div class="schedule-slot">
-          <span class="slot-time">⏰ ${slot.time}</span>
-          <div style="flex: 1;">
-            <span class="slot-course">[${escapeHTML(slot.course)}]</span> 
-            <strong>${escapeHTML(slot.taskTitle)}</strong>
+          <span class="slot-time">⏱️ ${slot.hours} hr${slot.hours === 1 ? '' : 's'}</span>
+          <div style="flex: 1; min-width: 0;">
+            <span class="slot-course">[${escapeHTML(slot.course || 'Study')}]</span> 
+            <strong>${escapeHTML(slot.task)}</strong>
+            ${slot.deadline ? `<span style="font-size: 0.72rem; color: var(--text-muted); margin-left: 0.5rem;">Due: ${escapeHTML(slot.deadline)}</span>` : ''}
           </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-main); padding: 2px 6px; border-radius: 4px;">
-            ${slot.hours} hrs focus
-          </span>
         </div>
       `;
     });
 
     html += `</div>`;
-  }
+  });
 
   elements.smartScheduleContent.innerHTML = html;
   elements.smartPlanModal.classList.add('active');
+  showToast('Study schedule generated successfully!', 'success');
+}
+
+/**
+ * Handles errors and explains browser CORS preflight restrictions
+ */
+function handleScheduleFetchError(err, payload, dailyStudyHours) {
+  console.error('Failed to generate study plan from n8n webhook:', err);
+
+  const isCorsOrNetwork = err instanceof TypeError || (err.message && (err.message.includes('fetch') || err.message.includes('NetworkError')));
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  elements.smartPlanStatusBadge.textContent = 'Connection Notice';
+  elements.smartPlanStatusBadge.style.background = '#f59e0b';
+  elements.smartPlanSummaryBanner.style.display = 'none';
+  elements.smartPlanWarnings.style.display = 'none';
+  elements.smartPlanUnscheduled.style.display = 'none';
+
+  if (isCorsOrNetwork && isLocalhost) {
+    elements.smartScheduleContent.innerHTML = `
+      <div class="smart-alert smart-alert-warning">
+        <div style="font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>⚠️</span> Browser CORS Restriction (Localhost)
+        </div>
+        <p style="margin-bottom: 0.5rem;">
+          Your browser blocked reading the response from <code>${escapeHTML(N8N_WEBHOOK_URL)}</code> due to browser CORS security.
+        </p>
+        <div style="background: rgba(255, 255, 255, 0.7); border: 1px solid #fde68a; border-radius: 6px; padding: 0.65rem 0.85rem; font-family: monospace; font-size: 0.76rem; margin: 0.5rem 0; line-height: 1.5;">
+          <strong>Requesting Origin:</strong> ${escapeHTML(window.location.origin)}<br>
+          <strong>n8n Access-Control-Allow-Origin:</strong> https://danaalsayeh.github.io
+        </div>
+        <p style="margin-bottom: 0.5rem;">
+          <strong>Why this happens:</strong> In your n8n workflow, the allowed CORS origin header is set to your production GitHub Pages domain (<code>https://danaalsayeh.github.io</code>). When running locally on <code>${escapeHTML(window.location.origin)}</code>, the browser preflight OPTIONS check blocks the direct call.
+        </p>
+        <p style="margin-bottom: 0.5rem;">
+          <strong>Verification & Next Steps:</strong>
+        </p>
+        <ul style="margin-left: 1.25rem; font-size: 0.8rem; line-height: 1.5;">
+          <li><strong>On GitHub Pages:</strong> Once pushed to your GitHub repository, calls will originate from <code>https://danaalsayeh.github.io</code> and succeed directly without CORS block!</li>
+          <li><strong>For Localhost Testing:</strong> In your n8n webhook node, add <code>http://localhost:8000</code> to the Allowed Origins list.</li>
+          <li><strong>Test UI Now:</strong> Click the button below to test through your local server proxy:</li>
+        </ul>
+        <div style="margin-top: 1rem; text-align: center;">
+          <button type="button" class="btn-auth" id="retryProxyBtn" style="margin: 0 auto; display: inline-flex; font-size: 0.82rem; padding: 0.5rem 1rem;">
+            ⚡ Test Schedule via Local Proxy
+          </button>
+        </div>
+      </div>
+    `;
+
+    const retryProxyBtn = document.getElementById('retryProxyBtn');
+    if (retryProxyBtn) {
+      retryProxyBtn.addEventListener('click', () => {
+        callViaLocalProxy(payload, dailyStudyHours);
+      });
+    }
+  } else {
+    elements.smartScheduleContent.innerHTML = `
+      <div class="smart-alert smart-alert-error">
+        <div style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem;">
+          ❌ Could Not Connect to n8n Webhook
+        </div>
+        <p>${escapeHTML(err.message || 'An unexpected network error occurred while connecting to n8n.')}</p>
+        <p style="margin-top: 0.5rem; font-size: 0.78rem; opacity: 0.85;">
+          Please verify that your published n8n workflow is active at <code>${escapeHTML(N8N_WEBHOOK_URL)}</code>.
+        </p>
+      </div>
+    `;
+  }
+
+  elements.smartPlanModal.classList.add('active');
+}
+
+/**
+ * Proxy helper for testing schedule UI on localhost
+ */
+async function callViaLocalProxy(payload, dailyStudyHours) {
+  setPlanLoadingState(true);
+  try {
+    const res = await fetch('/api/generate-study-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      throw new Error(`Proxy error HTTP ${res.status}: ${res.statusText}`);
+    }
+    const data = await res.json();
+    renderScheduleResult(data, dailyStudyHours);
+  } catch (err) {
+    elements.smartScheduleContent.innerHTML = `
+      <div class="smart-alert smart-alert-error">
+        <strong>Proxy Failed:</strong> ${escapeHTML(err.message)}
+      </div>
+    `;
+  } finally {
+    setPlanLoadingState(false);
+  }
 }
 
 // ==============================================================================
