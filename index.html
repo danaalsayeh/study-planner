@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Study Planner | Organize & Automate Your Study Schedule</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo-group">
+        <div class="logo-icon">📚</div>
+        <div class="logo-text">
+          <h1>StudyFlow</h1>
+          <p>Smart Student Study Planner</p>
+        </div>
+      </div>
+
+      <div class="user-nav-actions">
+        <!-- User Profile Pill -->
+        <div class="user-profile-badge" id="userBadge" title="Click to view profile or switch user">
+          <div class="user-avatar" id="navUserAvatar">S</div>
+          <div class="user-info-text">
+            <span class="user-name-display" id="navUserName">Guest Student</span>
+            <span class="user-status-sub" id="navUserStatus">Active Session</span>
+          </div>
+        </div>
+        <button class="btn-auth" id="authActionBtn">
+          <span id="authBtnIcon">🔑</span> <span id="authBtnLabel">Sign In</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+
+    <!-- Welcome Greeting Banner -->
+    <section class="welcome-banner">
+      <div class="banner-content">
+        <h2 id="welcomeGreeting">Welcome to your Study Planner! 🌟</h2>
+        <p>Keep track of your coursework, monitor assignment deadlines, and prepare your schedule for intelligent AI study plan automation.</p>
+      </div>
+      <div class="banner-quote">
+        <div class="quote-text">"Success is the sum of small efforts repeated day in and day out."</div>
+        <div class="quote-author">— Robert Collier</div>
+      </div>
+    </section>
+
+    <!-- Statistics Overview Grid -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon total">📋</div>
+        <div class="stat-info">
+          <div class="stat-label">Total Assignments</div>
+          <div class="stat-value" id="statTotal">0</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon pending">⏳</div>
+        <div class="stat-info">
+          <div class="stat-label">Pending Tasks</div>
+          <div class="stat-value" id="statPending">0</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon completed">✅</div>
+        <div class="stat-info">
+          <div class="stat-label">Completed</div>
+          <div class="stat-value" id="statCompleted">0</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon hours">⏱️</div>
+        <div class="stat-info">
+          <div class="stat-label">Est. Study Hours Left</div>
+          <div class="stat-value" id="statHours">0h</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Overall Completion Progress Bar -->
+    <section class="progress-container-card">
+      <div class="progress-header">
+        <div class="progress-title">
+          <span>Overall Course Completion</span>
+        </div>
+        <div class="progress-percent" id="progressPercentage">0%</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBarFill"></div>
+      </div>
+    </section>
+
+    <!-- Dashboard Content Split (Form & Smart Plan on Left, Assignment List on Right) -->
+    <div class="dashboard-grid">
+
+      <!-- Left Column: Add Assignment Form & Smart n8n Automation Box -->
+      <aside class="dashboard-sidebar">
+        <!-- New Assignment Form Card -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><span>✍️</span> Add Assignment</h3>
+            <span class="panel-subtext">Save to local schedule</span>
+          </div>
+
+          <form id="assignmentForm" class="assignment-form">
+            <!-- Assignment Title -->
+            <div class="form-group">
+              <label for="taskTitle">Assignment Title <span class="required">*</span></label>
+              <input type="text" id="taskTitle" class="form-control" placeholder="e.g. Research Paper Draft" required>
+            </div>
+
+            <!-- Course / Subject -->
+            <div class="form-group">
+              <label for="taskCourse">Course / Subject <span class="required">*</span></label>
+              <input type="text" id="taskCourse" list="courseSuggestions" class="form-control" placeholder="e.g. Computer Science" required>
+              <datalist id="courseSuggestions">
+                <option value="Computer Science">
+                <option value="Calculus II">
+                <option value="Physics">
+                <option value="Data Structures">
+                <option value="English Literature">
+                <option value="History">
+                <option value="Biology">
+              </datalist>
+            </div>
+
+            <!-- Deadline & Priority Row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="taskDeadline">Deadline Date <span class="required">*</span></label>
+                <input type="date" id="taskDeadline" class="form-control" required>
+              </div>
+
+              <div class="form-group">
+                <label for="taskPriority">Priority</label>
+                <select id="taskPriority" class="form-control">
+                  <option value="medium" selected>🟡 Medium</option>
+                  <option value="high">🔴 High</option>
+                  <option value="low">🟢 Low</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Estimated Hours & Notes -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="taskHours">Est. Study Hours</label>
+                <input type="number" id="taskHours" class="form-control" min="0.5" step="0.5" value="2" placeholder="2">
+              </div>
+
+              <div class="form-group">
+                <label for="taskDeadlineTime">Due Time</label>
+                <input type="time" id="taskDeadlineTime" class="form-control" value="23:59">
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="submitTaskBtn">
+              <span>➕</span> Add to Planner
+            </button>
+          </form>
+
+          <!-- Smart Plan Automation Box -->
+          <div class="smart-planner-box">
+            <div class="smart-planner-header">
+              <span style="font-size: 1.2rem;">🤖</span>
+              <strong style="font-size: 0.95rem;">Smart Study Schedule</strong>
+              <span class="badge-n8n">AI Powered</span>
+            </div>
+            <p class="smart-planner-desc">
+              Generate an optimized daily timetable based on your deadlines, priority, and estimated study hours.
+            </p>
+            <div class="smart-schedule-preview">
+              💡 <em>Automatically calculates balanced daily focus sessions so you can stay on track without cramming.</em>
+            </div>
+            <button type="button" class="btn-smart-plan" id="generatePlanBtn">
+              <span>✨</span> Preview Smart Study Plan
+            </button>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- Right Column: Assignments List -->
+      <section class="dashboard-main">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><span>📝</span> Assignments & Tasks</h3>
+            <span class="panel-subtext" id="assignmentCountSub">0 tasks</span>
+          </div>
+
+          <!-- Toolbar: Filters, Search, Sort -->
+          <div class="assignments-toolbar">
+            <!-- Filter Pills -->
+            <div class="filter-pills" id="filterPills">
+              <button type="button" class="filter-pill active" data-filter="all">All</button>
+              <button type="button" class="filter-pill" data-filter="pending">Pending</button>
+              <button type="button" class="filter-pill" data-filter="completed">Completed</button>
+              <button type="button" class="filter-pill" data-filter="dueSoon">Due Soon</button>
+            </div>
+
+            <!-- Search and Sort -->
+            <div class="list-controls">
+              <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="form-control" placeholder="Search tasks or course...">
+              </div>
+
+              <select id="sortSelect" class="sort-select" title="Sort assignments">
+                <option value="deadlineAsc">📅 Deadline: Soonest First</option>
+                <option value="deadlineDesc">📅 Deadline: Latest First</option>
+                <option value="priority">🔥 Priority (High to Low)</option>
+                <option value="hours">⏱️ Study Hours (Longest First)</option>
+                <option value="title">🔤 Title (A to Z)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Assignments Container -->
+          <div class="assignment-list" id="assignmentList">
+            <!-- Rendered dynamically by script.js -->
+          </div>
+
+          <!-- Empty State (Shown when no items match) -->
+          <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">📖</div>
+            <h4>No assignments found</h4>
+            <p id="emptyStateMessage">You're all caught up! Add a new assignment using the form on the left to start planning your studies.</p>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Auth / User Profile Modal -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-box">
+      <button class="modal-close-btn" id="closeAuthModal" title="Close modal">&times;</button>
+      <div class="modal-header">
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🎓</div>
+        <h3 id="authModalTitle">Student Login</h3>
+        <p>Log in with your name to save and manage your personalized study planner.</p>
+      </div>
+
+      <form id="authForm">
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label for="userNameInput">Your Name</label>
+          <input type="text" id="userNameInput" class="form-control" placeholder="e.g. Alex Johnson" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="userEmailInput">Email / Major (Optional)</label>
+          <input type="text" id="userEmailInput" class="form-control" placeholder="e.g. alex@university.edu or CS Major">
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%;">
+          <span>🚀</span> Enter Study Planner
+        </button>
+      </form>
+
+      <div style="margin-top: 1.25rem; text-align: center;">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Or try a quick demo account:</span>
+        <div class="demo-account-pills">
+          <button type="button" class="demo-pill" data-name="Emma Watson" data-major="Computer Science">Emma (CS)</button>
+          <button type="button" class="demo-pill" data-name="David Chen" data-major="Pre-Med Biology">David (Pre-Med)</button>
+          <button type="button" class="demo-pill" data-name="Sophia Rossi" data-major="Engineering">Sophia (Eng)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Smart Plan Preview Modal -->
+  <div class="modal-overlay" id="smartPlanModal">
+    <div class="modal-box modal-box-large">
+      <button class="modal-close-btn" id="closeSmartPlanModal" title="Close modal">&times;</button>
+      <div class="modal-header" style="text-align: left;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🤖</span> Generated Smart Study Schedule
+          </h3>
+          <span class="badge-n8n">Optimized</span>
+        </div>
+        <p style="margin-top: 0.5rem;">
+          Here is an algorithmic breakdown of your upcoming study sessions, calculated by distributing workload ahead of approaching deadlines.
+        </p>
+      </div>
+
+      <div style="background: #faf8ff; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-secondary);">
+        <strong>💡 Schedule Summary:</strong> 
+        <span style="color: var(--primary); font-weight: 600;">Personalized Focus Blocks</span>. 
+        Sessions are arranged chronologically to ensure high-priority deadlines are completed well before their due date.
+      </div>
+
+      <div class="smart-schedule-timeline" id="smartScheduleContent">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" class="btn-auth" id="printScheduleBtn">🖨️ Print Schedule</button>
+        <button type="button" class="btn-primary" id="confirmPlanBtn" style="margin-top: 0;">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Footer -->
+  <footer>
+    <p>StudyFlow Planner &bull; Modern GitHub Pages Compatible Web App</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
