@@ -1,0 +1,72 @@
+name: Deploy StudyFlow to GitHub Pages
+
+# 1. Trigger the workflow automatically on push to the main branch, or manually via GitHub UI
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# 2. Set the minimal permissions required for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 3. Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Job 1: Continuous Integration (CI) - File & Syntax Validation
+  test:
+    name: Verify Files & JavaScript Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Required Website Files Exist
+        run: |
+          echo "Verifying essential static website files exist..."
+          test -f index.html || { echo "Error: index.html is missing!"; exit 1; }
+          test -f style.css  || { echo "Error: style.css is missing!"; exit 1; }
+          test -f script.js  || { echo "Error: script.js is missing!"; exit 1; }
+          echo "Success: index.html, style.css, and script.js are all present."
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate JavaScript Syntax
+        run: |
+          echo "Checking JavaScript syntax for script.js..."
+          node --check script.js
+          echo "Success: script.js has valid syntax."
+
+  # Job 2: Continuous Deployment (CD) - Deploy to GitHub Pages
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: test # Ensure deployment only runs if the CI checks above pass
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Website Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire root directory containing index.html, style.css, and script.js
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
