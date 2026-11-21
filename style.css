@@ -1140,6 +1140,295 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ==========================================================================
+   Interactive Study Calendar Styles
+   ========================================================================== */
+
+.calendar-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+
+.calendar-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.calendar-title-group h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-month-indicator {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 140px;
+  text-align: center;
+}
+
+.calendar-nav-btn {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-light);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.calendar-nav-btn:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: var(--border-focus);
+}
+
+.calendar-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--primary-subtle);
+  border-bottom: 1px solid var(--border-light);
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 0.6rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--border-light);
+  gap: 1px;
+}
+
+.calendar-day-cell {
+  background: #ffffff;
+  min-height: 90px;
+  padding: 0.45rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.calendar-day-cell:hover {
+  background: #faf8ff;
+}
+
+.calendar-day-cell.other-month {
+  background: #faf9fd;
+  opacity: 0.45;
+}
+
+.calendar-day-cell.other-month:hover {
+  opacity: 0.75;
+}
+
+.calendar-day-cell.is-today {
+  background: #fbf9ff;
+}
+
+.calendar-day-cell.is-today .cell-day-num {
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-day-cell.is-selected {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  background: #f6f1fc;
+}
+
+.cell-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cell-badge-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+}
+
+.cell-tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: hidden;
+  flex: 1;
+}
+
+.calendar-event-chip {
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2.5px solid var(--primary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.calendar-event-chip.priority-high {
+  border-left-color: var(--priority-high);
+  background: var(--priority-high-bg);
+  color: var(--priority-high);
+}
+
+.calendar-event-chip.priority-medium {
+  border-left-color: var(--priority-med);
+  background: var(--priority-med-bg);
+  color: var(--priority-med);
+}
+
+.calendar-event-chip.priority-low {
+  border-left-color: var(--priority-low);
+  background: var(--priority-low-bg);
+  color: var(--priority-low);
+}
+
+.calendar-event-chip.is-completed {
+  text-decoration: line-through;
+  opacity: 0.65;
+  background: #f1f0f5;
+  color: var(--text-muted);
+  border-left-color: var(--success);
+}
+
+.calendar-more-chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 1px 4px;
+  background: var(--primary-subtle);
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+/* Date Details Section */
+.calendar-date-details {
+  margin-top: 1.25rem;
+  background: #faf8ff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+}
+
+.date-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(124, 92, 191, 0.12);
+}
+
+.date-details-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.date-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.date-detail-item {
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: var(--transition);
+}
+
+.date-detail-item:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-sm);
+}
+
+.date-detail-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+  font-style: italic;
+}
+
+/* Mobile Responsiveness for Calendar */
+@media (max-width: 768px) {
+  .calendar-day-cell {
+    min-height: 55px;
+    padding: 0.25rem;
+  }
+  .cell-top-bar {
+    font-size: 0.72rem;
+  }
+  .calendar-event-chip {
+    font-size: 0.6rem;
+    padding: 1px 3px;
+  }
+  .calendar-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Footer */
 footer {
   text-align: center;

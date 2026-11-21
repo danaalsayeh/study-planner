@@ -73,13 +73,27 @@ function getFutureDate(daysAhead = 0) {
   return d.toISOString().split('T')[0];
 }
 
+// Helper: return user's local today date formatted as YYYY-MM-DD
+function getLocalTodayDate() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // State Object
 const state = {
   currentUser: null,
   assignments: [],
   currentFilter: 'all',
   currentSort: 'deadlineAsc',
-  searchQuery: ''
+  searchQuery: '',
+  calendar: {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+    selectedDate: getLocalTodayDate()
+  }
 };
 
 // ==============================================================================
@@ -150,7 +164,17 @@ const elements = {
   printScheduleBtn: document.getElementById('printScheduleBtn'),
 
   // Toast Container
-  toastContainer: document.getElementById('toastContainer')
+  toastContainer: document.getElementById('toastContainer'),
+
+  // Calendar Elements
+  calendarMonthYear: document.getElementById('calendarMonthYear'),
+  calendarDaysGrid: document.getElementById('calendarDaysGrid'),
+  prevMonthBtn: document.getElementById('prevMonthBtn'),
+  nextMonthBtn: document.getElementById('nextMonthBtn'),
+  todayMonthBtn: document.getElementById('todayMonthBtn'),
+  selectedDateTitle: document.getElementById('selectedDateTitle'),
+  selectedDateCountBadge: document.getElementById('selectedDateCountBadge'),
+  selectedDateList: document.getElementById('selectedDateList')
 };
 
 // ==============================================================================
@@ -512,6 +536,7 @@ function renderAssignments() {
 function renderApp() {
   updateStatsAndProgress();
   renderAssignments();
+  renderCalendar();
 }
 
 // ==============================================================================
@@ -555,20 +580,241 @@ function escapeHTML(str) {
 }
 
 // ==============================================================================
+// Interactive Study Calendar Logic
+// ==============================================================================
+
+/**
+ * Changes active calendar month (+1 for next, -1 for prev)
+ */
+function changeCalendarMonth(offset) {
+  state.calendar.month += offset;
+  if (state.calendar.month < 0) {
+    state.calendar.month = 11;
+    state.calendar.year--;
+  } else if (state.calendar.month > 11) {
+    state.calendar.month = 0;
+    state.calendar.year++;
+  }
+  renderCalendar();
+}
+
+/**
+ * Resets calendar view to today's month and selects today's date
+ */
+function resetCalendarToToday() {
+  const now = new Date();
+  state.calendar.year = now.getFullYear();
+  state.calendar.month = now.getMonth();
+  state.calendar.selectedDate = getLocalTodayDate();
+  renderCalendar();
+}
+
+/**
+ * Helper to convert Date object to 'YYYY-MM-DD'
+ */
+function formatDateToISO(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Renders the full 7-column calendar grid
+ */
+function renderCalendar() {
+  if (!elements.calendarDaysGrid || !elements.calendarMonthYear) return;
+
+  const year = state.calendar.year;
+  const month = state.calendar.month;
+
+  // Header string (e.g. "November 2026")
+  const monthDate = new Date(year, month, 1);
+  elements.calendarMonthYear.textContent = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Date math
+  const firstDayWeekday = new Date(year, month, 1).getDay(); // 0 = Sun
+  const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const todayStr = getLocalTodayDate();
+
+  elements.calendarDaysGrid.innerHTML = '';
+
+  // 1. Previous Month Leading Days
+  for (let i = firstDayWeekday - 1; i >= 0; i--) {
+    const dayNum = daysInPrevMonth - i;
+    const prevDate = new Date(year, month - 1, dayNum);
+    const dateStr = formatDateToISO(prevDate);
+    const cell = createCalendarDayCell(dayNum, dateStr, true, todayStr);
+    elements.calendarDaysGrid.appendChild(cell);
+  }
+
+  // 2. Current Month Days
+  for (let d = 1; d <= daysInCurrentMonth; d++) {
+    const curDate = new Date(year, month, d);
+    const dateStr = formatDateToISO(curDate);
+    const cell = createCalendarDayCell(d, dateStr, false, todayStr);
+    elements.calendarDaysGrid.appendChild(cell);
+  }
+
+  // 3. Trailing Days to complete grid row
+  const totalCellsSoFar = firstDayWeekday + daysInCurrentMonth;
+  const trailingDays = (7 - (totalCellsSoFar % 7)) % 7;
+  for (let d = 1; d <= trailingDays; d++) {
+    const nextDate = new Date(year, month + 1, d);
+    const dateStr = formatDateToISO(nextDate);
+    const cell = createCalendarDayCell(d, dateStr, true, todayStr);
+    elements.calendarDaysGrid.appendChild(cell);
+  }
+
+  // Render detail panel for currently selected date
+  renderSelectedDateDetails();
+}
+
+/**
+ * Creates individual calendar day element with badges and click handler
+ */
+function createCalendarDayCell(dayNum, dateStr, isOtherMonth, todayStr) {
+  const cell = document.createElement('div');
+  cell.className = 'calendar-day-cell';
+  if (isOtherMonth) cell.classList.add('other-month');
+  if (dateStr === todayStr) cell.classList.add('is-today');
+  if (dateStr === state.calendar.selectedDate) cell.classList.add('is-selected');
+
+  // Filter real assignments due on this date (uses existing state.assignments without duplication)
+  const dueAssignments = state.assignments.filter(a => a.deadline === dateStr);
+
+  // Top bar with day number and badge count
+  const topBar = document.createElement('div');
+  topBar.className = 'cell-top-bar';
+
+  const daySpan = document.createElement('span');
+  daySpan.className = 'cell-day-num';
+  daySpan.textContent = dayNum;
+  topBar.appendChild(daySpan);
+
+  if (dueAssignments.length > 0) {
+    const countBadge = document.createElement('span');
+    countBadge.className = 'cell-badge-count';
+    countBadge.textContent = dueAssignments.length;
+    topBar.appendChild(countBadge);
+  }
+  cell.appendChild(topBar);
+
+  // Assignment Chips Container
+  const tasksContainer = document.createElement('div');
+  tasksContainer.className = 'cell-tasks-container';
+
+  const maxChips = 2;
+  const visible = dueAssignments.slice(0, maxChips);
+  visible.forEach(item => {
+    const chip = document.createElement('div');
+    chip.className = `calendar-event-chip priority-${item.priority || 'medium'} ${item.completed ? 'is-completed' : ''}`;
+    chip.title = `${item.course}: ${item.title} (${item.completed ? 'Completed' : 'Pending'})`;
+    chip.innerHTML = `<span style="font-size:0.6rem;">${item.completed ? '✓' : '•'}</span> <span style="overflow:hidden; text-overflow:ellipsis;">${escapeHTML(item.title)}</span>`;
+    tasksContainer.appendChild(chip);
+  });
+
+  if (dueAssignments.length > maxChips) {
+    const moreChip = document.createElement('div');
+    moreChip.className = 'calendar-more-chip';
+    moreChip.textContent = `+${dueAssignments.length - maxChips} more`;
+    tasksContainer.appendChild(moreChip);
+  }
+
+  cell.appendChild(tasksContainer);
+
+  // Click on date to select it and update details
+  cell.addEventListener('click', () => {
+    state.calendar.selectedDate = dateStr;
+    renderCalendar();
+  });
+
+  return cell;
+}
+
+/**
+ * Displays assignments due on the selected date
+ */
+function renderSelectedDateDetails() {
+  if (!elements.selectedDateTitle || !elements.selectedDateList) return;
+
+  const dateStr = state.calendar.selectedDate;
+  const todayStr = getLocalTodayDate();
+
+  let friendlyDate = dateStr;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    friendlyDate = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  const isToday = (dateStr === todayStr);
+  elements.selectedDateTitle.innerHTML = `<span>📌</span> Assignments for ${isToday ? 'Today (' + friendlyDate + ')' : friendlyDate}`;
+
+  const dayAssignments = state.assignments.filter(a => a.deadline === dateStr);
+  elements.selectedDateCountBadge.textContent = `${dayAssignments.length} assignment${dayAssignments.length === 1 ? '' : 's'}`;
+
+  if (dayAssignments.length === 0) {
+    elements.selectedDateList.innerHTML = `
+      <div class="date-detail-empty">
+        No assignments due on this date. Perfect day to focus, study ahead, or take a break!
+      </div>
+    `;
+    return;
+  }
+
+  elements.selectedDateList.innerHTML = '';
+  dayAssignments.forEach(item => {
+    const row = document.createElement('div');
+    row.className = `date-detail-item ${item.completed ? 'completed' : ''}`;
+    row.style.borderLeft = `4px solid ${item.completed ? 'var(--success)' : item.priority === 'high' ? 'var(--priority-high)' : item.priority === 'medium' ? 'var(--priority-med)' : 'var(--priority-low)'}`;
+
+    row.innerHTML = `
+      <div class="checkbox-container" title="${item.completed ? 'Mark as pending' : 'Mark as completed'}">
+        <div class="checkbox-custom">
+          ${item.completed ? '✓' : ''}
+        </div>
+      </div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem; flex-wrap: wrap;">
+          <span class="course-badge" style="font-size: 0.7rem;">${escapeHTML(item.course)}</span>
+          <span class="priority-badge ${item.priority || 'medium'}" style="font-size: 0.68rem;">
+            ${item.priority === 'high' ? '🔥 High' : item.priority === 'medium' ? '⚡ Medium' : '🌱 Low'}
+          </span>
+          ${item.deadlineTime ? `<span style="font-size: 0.72rem; color: var(--text-muted);">⏰ Due ${escapeHTML(item.deadlineTime)}</span>` : ''}
+        </div>
+        <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main); ${item.completed ? 'text-decoration: line-through; color: var(--text-muted);' : ''}">
+          ${escapeHTML(item.title)}
+        </div>
+      </div>
+      <div style="font-size: 0.78rem; color: var(--text-muted); white-space: nowrap;">
+        ⏱️ ${item.estimatedHours || 1}h
+      </div>
+      <button type="button" class="action-btn delete-btn" title="Delete assignment">
+        🗑️
+      </button>
+    `;
+
+    // Toggle complete
+    row.querySelector('.checkbox-container').addEventListener('click', () => {
+      toggleAssignmentCompletion(item.id);
+    });
+
+    // Delete
+    row.querySelector('.delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteAssignment(item.id);
+    });
+
+    elements.selectedDateList.appendChild(row);
+  });
+}
+
+// ==============================================================================
 // Smart Study Plan Generator (Connected to n8n Webhook)
 // ==============================================================================
 const N8N_WEBHOOK_URL = 'https://dana962.app.n8n.cloud/webhook/generate-study-plan';
-
-/**
- * Returns today's date in user's local timezone formatted as 'YYYY-MM-DD'
- */
-function getLocalTodayDate() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 /**
  * Formats a schedule date (YYYY-MM-DD) into a friendly string
@@ -1094,4 +1340,15 @@ function setupEventListeners() {
   elements.printScheduleBtn.addEventListener('click', () => {
     window.print();
   });
+
+  // Calendar Month Navigation & Today Shortcut
+  if (elements.prevMonthBtn) {
+    elements.prevMonthBtn.addEventListener('click', () => changeCalendarMonth(-1));
+  }
+  if (elements.nextMonthBtn) {
+    elements.nextMonthBtn.addEventListener('click', () => changeCalendarMonth(1));
+  }
+  if (elements.todayMonthBtn) {
+    elements.todayMonthBtn.addEventListener('click', resetCalendarToToday);
+  }
 }
