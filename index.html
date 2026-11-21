@@ -24,11 +24,11 @@
 
       <div class="user-nav-actions">
         <!-- User Profile Pill -->
-        <div class="user-profile-badge" id="userBadge" title="Click to view profile or switch user">
-          <div class="user-avatar" id="navUserAvatar">S</div>
+        <div class="user-profile-badge" id="userBadge" title="Click to view profile or sign in">
+          <div class="user-avatar" id="navUserAvatar">G</div>
           <div class="user-info-text">
-            <span class="user-name-display" id="navUserName">Guest Student</span>
-            <span class="user-status-sub" id="navUserStatus">Active Session</span>
+            <span class="user-name-display" id="navUserName">Guest</span>
+            <span class="user-status-sub" id="navUserStatus">Guest Mode</span>
           </div>
         </div>
         <button class="btn-auth" id="authActionBtn">
@@ -44,7 +44,7 @@
     <!-- Welcome Greeting Banner -->
     <section class="welcome-banner">
       <div class="banner-content">
-        <h2 id="welcomeGreeting">Welcome to your Study Planner! 🌟</h2>
+        <h2 id="welcomeGreeting">Welcome to StudyFlow! 🌟</h2>
         <p>Keep track of your coursework, monitor assignment deadlines, and prepare your schedule for intelligent AI study plan automation.</p>
       </div>
       <div class="banner-quote">
@@ -257,16 +257,19 @@
       <form id="authForm">
         <div class="form-group" style="margin-bottom: 0.85rem;">
           <label for="userNameInput">Your Name</label>
-          <input type="text" id="userNameInput" class="form-control" placeholder="e.g. Alex Johnson" required>
+          <input type="text" id="userNameInput" class="form-control" placeholder="e.g. Jordan Lee" required>
         </div>
 
         <div class="form-group" style="margin-bottom: 1.25rem;">
           <label for="userEmailInput">Email / Major (Optional)</label>
-          <input type="text" id="userEmailInput" class="form-control" placeholder="e.g. alex@university.edu or CS Major">
+          <input type="text" id="userEmailInput" class="form-control" placeholder="e.g. student@university.edu or CS Major">
         </div>
 
         <button type="submit" class="btn-primary" style="width: 100%;">
           <span>🚀</span> Enter Study Planner
+        </button>
+        <button type="button" class="btn-auth" id="signOutBtn" style="width: 100%; margin-top: 0.5rem; justify-content: center; display: none;">
+          <span>🚪</span> Switch to Guest Mode
         </button>
       </form>
 
@@ -276,6 +279,11 @@
           <button type="button" class="demo-pill" data-name="Emma Watson" data-major="Computer Science">Emma (CS)</button>
           <button type="button" class="demo-pill" data-name="David Chen" data-major="Pre-Med Biology">David (Pre-Med)</button>
           <button type="button" class="demo-pill" data-name="Sophia Rossi" data-major="Engineering">Sophia (Eng)</button>
+        </div>
+        <div style="margin-top: 0.85rem;">
+          <button type="button" id="loadSampleTasksBtn" class="btn-auth" style="font-size: 0.75rem; padding: 0.35rem 0.85rem; margin: 0 auto; display: inline-flex;">
+            ✨ Load Example Assignments
+          </button>
         </div>
       </div>
     </div>

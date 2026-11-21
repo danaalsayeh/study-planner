@@ -129,6 +129,8 @@ const elements = {
   userNameInput: document.getElementById('userNameInput'),
   userEmailInput: document.getElementById('userEmailInput'),
   demoPills: document.querySelectorAll('.demo-pill'),
+  signOutBtn: document.getElementById('signOutBtn'),
+  loadSampleTasksBtn: document.getElementById('loadSampleTasksBtn'),
 
   // Smart Plan Modal
   generatePlanBtn: document.getElementById('generatePlanBtn'),
@@ -170,20 +172,20 @@ function initUserSession() {
   const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
   if (savedUser) {
     try {
-      state.currentUser = JSON.parse(savedUser);
+      const parsed = JSON.parse(savedUser);
+      // Clean up legacy default demo account if stored previously
+      if (parsed && parsed.name === 'Alex Johnson' && parsed.email === 'alex@university.edu') {
+        state.currentUser = null;
+        localStorage.removeItem(STORAGE_KEYS.USER);
+      } else {
+        state.currentUser = parsed;
+      }
     } catch (e) {
       state.currentUser = null;
     }
-  }
-
-  // If no user is logged in, default to a friendly guest profile
-  if (!state.currentUser) {
-    state.currentUser = {
-      name: 'Alex Johnson',
-      email: 'alex@university.edu',
-      isGuest: false
-    };
-    saveUserSession();
+  } else {
+    // New visitors start in Guest mode with no automatic login
+    state.currentUser = null;
   }
   updateUserUI();
 }
@@ -197,30 +199,32 @@ function saveUserSession() {
 }
 
 function updateUserUI() {
-  if (!state.currentUser) {
+  if (!state.currentUser || state.currentUser.isGuest) {
     elements.navUserName.textContent = 'Guest';
     elements.navUserAvatar.textContent = 'G';
-    elements.navUserStatus.textContent = 'Not signed in';
+    elements.navUserStatus.textContent = 'Guest Mode';
     elements.authBtnLabel.textContent = 'Sign In';
     elements.authBtnIcon.textContent = '🔑';
-    elements.welcomeGreeting.textContent = 'Welcome to Study Planner! 🌟';
+    elements.welcomeGreeting.textContent = 'Welcome to StudyFlow! 🌟';
   } else {
     elements.navUserName.textContent = state.currentUser.name;
     elements.navUserAvatar.textContent = (state.currentUser.name.charAt(0) || 'U').toUpperCase();
     elements.navUserStatus.textContent = state.currentUser.email ? state.currentUser.email : 'Student Account';
-    elements.authBtnLabel.textContent = 'Switch / Out';
+    elements.authBtnLabel.textContent = 'Switch Account';
     elements.authBtnIcon.textContent = '🔄';
     elements.welcomeGreeting.textContent = `Welcome back, ${state.currentUser.name.split(' ')[0]}! 🌟`;
   }
 }
 
 function openAuthModal() {
-  if (state.currentUser) {
+  if (state.currentUser && !state.currentUser.isGuest) {
     elements.userNameInput.value = state.currentUser.name;
     elements.userEmailInput.value = state.currentUser.email || '';
+    if (elements.signOutBtn) elements.signOutBtn.style.display = 'flex';
   } else {
     elements.userNameInput.value = '';
     elements.userEmailInput.value = '';
+    if (elements.signOutBtn) elements.signOutBtn.style.display = 'none';
   }
   elements.authModal.classList.add('active');
   elements.userNameInput.focus();
@@ -237,16 +241,15 @@ function initAssignments() {
   const stored = localStorage.getItem(STORAGE_KEYS.ASSIGNMENTS);
   if (stored) {
     try {
-      state.assignments = JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      state.assignments = Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-      console.error('Failed to parse stored assignments, falling back to initial data');
-      state.assignments = [...INITIAL_SAMPLE_ASSIGNMENTS];
-      saveAssignments();
+      console.error('Failed to parse stored assignments:', e);
+      state.assignments = [];
     }
   } else {
-    // Populate with friendly initial data on first launch
-    state.assignments = [...INITIAL_SAMPLE_ASSIGNMENTS];
-    saveAssignments();
+    // New visitors start with zero assignments
+    state.assignments = [];
   }
 }
 
@@ -704,6 +707,28 @@ function setupEventListeners() {
       showToast(`Switched account to ${name}!`, 'success');
     });
   });
+
+  // Switch to Guest Mode / Sign Out
+  if (elements.signOutBtn) {
+    elements.signOutBtn.addEventListener('click', () => {
+      state.currentUser = null;
+      localStorage.removeItem(STORAGE_KEYS.USER);
+      updateUserUI();
+      closeAuthModal();
+      showToast('Switched to Guest mode.', 'info');
+    });
+  }
+
+  // Optional Load Example Assignments
+  if (elements.loadSampleTasksBtn) {
+    elements.loadSampleTasksBtn.addEventListener('click', () => {
+      state.assignments = [...INITIAL_SAMPLE_ASSIGNMENTS];
+      saveAssignments();
+      renderApp();
+      closeAuthModal();
+      showToast('Loaded example assignments!', 'success');
+    });
+  }
 
   // Smart Plan Modal triggers
   elements.generatePlanBtn.addEventListener('click', generateSmartStudyPlan);
